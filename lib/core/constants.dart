@@ -10,6 +10,7 @@ const String PLAYER2_SYMBOL = 'O';
 
 const String GAME_TITLE = 'Tic Tac Toe';
 const String TIED_TITLE = 'Game Tied!';
+const String SELECTED_PLAYER = 'Player [SYMBOL] turn';
 const String WIN_TITLE = 'Player [SYMBOL] won!';
 const String DIALOG_MESSAGE = 'Press the reset button to start again!';
 const String SINGLE_PLAYER_MODE_LABEL = 'Single Player';
