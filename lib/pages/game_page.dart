@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:share/share.dart';
 import 'package:tictactoe/controllers/game_controller.dart';
 import 'package:tictactoe/core/constants.dart';
-import 'package:tictactoe/enums/player_type.dart';
+import 'package:tictactoe/dialogs/custom_dialog.dart';
 import 'package:tictactoe/enums/winner_type.dart';
-import 'package:tictactoe/widgets/custom_dialog.dart';
+import 'package:tictactoe/models/game_tile.dart';
 
 class GamePage extends StatefulWidget {
   @override
@@ -25,6 +28,12 @@ class _GamePageState extends State<GamePage> {
     return AppBar(
       title: Text(GAME_TITLE),
       centerTitle: true,
+      actions: [
+        IconButton(
+          icon: Icon(Icons.share),
+          onPressed: () => _shareGame(context),
+        )
+      ],
     );
   }
 
@@ -34,6 +43,8 @@ class _GamePageState extends State<GamePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _scoreBoard(),
+          _currentPlayerText(),
           _buildBoard(),
           _buildPlayerMode(),
           _buildResetButton(),
@@ -50,6 +61,47 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
+  _scoreBoard() {
+    return Container(
+      // padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withOpacity(0.25),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            // mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Text(
+                'Playstation',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(_controller.x.toString()),
+            ],
+          ),
+          Column(
+            children: [
+              Text(
+                'Xbox',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(_controller.o.toString()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   _buildBoard() {
     return Expanded(
       child: GridView.builder(
@@ -57,26 +109,26 @@ class _GamePageState extends State<GamePage> {
         itemCount: BOARD_SIZE,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          mainAxisSpacing: 10,
+          mainAxisSpacing: 8,
           crossAxisSpacing: 10,
+          childAspectRatio: 1,
         ),
-        itemBuilder: _buildTile,
+        itemBuilder: (context, index) {
+          final tile = _controller.tiles[index];
+          return _buildTile(tile);
+        },
       ),
     );
   }
 
-  Widget _buildTile(context, index) {
+  _buildTile(GameTile tile) {
     return GestureDetector(
-      onTap: () => _onMarkTile(index),
+      onTap: () => _onMarkTile(tile),
       child: Container(
-        color: _controller.tiles[index].color,
+        color: tile.color,
         child: Center(
-          child: Text(
-            _controller.tiles[index].symbol,
-            style: TextStyle(
-              fontSize: 72.0,
-              color: Colors.white,
-            ),
+          child: Image(
+            image: AssetImage(tile.img),
           ),
         ),
       ),
@@ -85,15 +137,15 @@ class _GamePageState extends State<GamePage> {
 
   _onResetGame() {
     setState(() {
-      _controller.reset();
+      _controller.initialize();
     });
   }
 
-  _onMarkTile(index) {
-    if (!_controller.tiles[index].enable) return;
+  _onMarkTile(GameTile tile) {
+    if (!tile.enable) return;
 
     setState(() {
-      _controller.markBoardTileByIndex(index);
+      _controller.mark(tile);
     });
 
     _checkWinner();
@@ -104,16 +156,23 @@ class _GamePageState extends State<GamePage> {
     if (winner == WinnerType.none) {
       if (!_controller.hasMoves) {
         _showTiedDialog();
-      } else if (_controller.isSinglePlayer &&
-          _controller.currentPlayer == PlayerType.player2) {
-        final index = _controller.automaticMove();
-        _onMarkTile(index);
+      } else if (_controller.isBotTurn) {
+        _onMarkTileByBot();
       }
     } else {
       String symbol =
           winner == WinnerType.player1 ? PLAYER1_SYMBOL : PLAYER2_SYMBOL;
       _showWinnerDialog(symbol);
+      setState(() {
+        _controller.scoreCount(symbol);
+      });
     }
+  }
+
+  _onMarkTileByBot() {
+    final id = _controller.automaticMove();
+    final tile = _controller.tiles.firstWhere((element) => element.id == id);
+    _onMarkTile(tile);
   }
 
   _showWinnerDialog(String symbol) {
@@ -146,7 +205,8 @@ class _GamePageState extends State<GamePage> {
 
   _buildPlayerMode() {
     return SwitchListTile(
-      title: Text(_controller.isSinglePlayer ? 'Single Player' : 'Two Players'),
+      title: Text(
+          _controller.isSinglePlayer ? SINGLE_PLAYER_MODE : MULTIPLAYER_MODE),
       secondary: Icon(_controller.isSinglePlayer ? Icons.person : Icons.group),
       value: _controller.isSinglePlayer,
       onChanged: (value) {
@@ -154,6 +214,30 @@ class _GamePageState extends State<GamePage> {
           _controller.isSinglePlayer = value;
         });
       },
+    );
+  }
+
+  _currentPlayerText() {
+    return Container(
+      height: 25,
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withOpacity(0.25),
+      ),
+      child: Center(
+        child: Text(
+          'Player turn: ' + _controller.currentPlayerTurn(),
+          style: TextStyle(
+            color: Theme.of(context).primaryColor,
+            fontSize: 15,
+          ),
+        ),
+      ),
+    );
+  }
+
+  _shareGame(BuildContext context) async {
+    await Share.share(
+      'Check out this game ! - https://github.com/lgmbx/tic-tac-toe',
     );
   }
 }
